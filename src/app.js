@@ -5,6 +5,7 @@ import dotenv from 'dotenv';
 import dayjs from 'dayjs';
 
 import participantSchema from './schemas/participantSchema.js';
+import messageSchema from './schemas/messageSchema.js';
 
 dotenv.config();
 
@@ -36,6 +37,7 @@ app.post('/participants', async (req, res) => {
       name,
       lastStatus: Date.now(),
     };
+
     const newMessage = {
       from: name,
       to: 'Todos',
@@ -63,8 +65,29 @@ app.get('/participants', async (req, res) => {
   }
 });
 
-app.post('/messages', (req, res) => {
-  res.sendStatus(201);
+app.post('/messages', async (req, res) => {
+  const { user } = req.headers;
+
+  try {
+    const participant = await db.collection('participants').findOne({ name: user });
+    const validation = messageSchema.validate(req.body);
+
+    if (!participant || validation.error) {
+      return res.sendStatus(422);
+    }
+
+    const newMessage = {
+      from: user,
+      ...req.body,
+      time: dayjs().format('HH:mm:ss'),
+    };
+
+    await db.collection('messages').insertOne(newMessage);
+
+    return res.sendStatus(201);
+  } catch (err) {
+    return res.send(err);
+  }
 });
 
 app.get('/messages', async (req, res) => {

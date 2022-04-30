@@ -1,9 +1,6 @@
 import Joi from 'joi';
 
 const messageSchema = Joi.object({
-  from: Joi.string()
-    .required(),
-
   to: Joi.string()
     .required(),
 
@@ -11,9 +8,7 @@ const messageSchema = Joi.object({
     .required(),
 
   type: Joi.string()
-    .required(),
-
-  time: Joi.string()
+    .valid('message', 'private_message')
     .required(),
 });
 
