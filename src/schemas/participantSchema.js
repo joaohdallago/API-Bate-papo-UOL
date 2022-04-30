@@ -2,15 +2,8 @@ import Joi from 'joi';
 
 const participantSchema = Joi.object({
   name: Joi.string()
-    .required(),
-
-  lastStatus: Joi.number()
+    .min(1)
     .required(),
 });
 
 export default participantSchema;
-
-// {
-//     name: 'João',
-//     lastStatus: 12313123
-// }

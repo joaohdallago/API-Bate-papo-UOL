@@ -2,6 +2,9 @@ import express from 'express';
 import cors from 'cors';
 import { MongoClient } from 'mongodb';
 import dotenv from 'dotenv';
+import dayjs from 'dayjs';
+
+import participantSchema from './schemas/participantSchema.js';
 
 dotenv.config();
 
@@ -16,14 +19,37 @@ mongoClient.connect().then(() => {
 });
 
 app.post('/participants', async (req, res) => {
-  const newParticipant = req.body;
+  const validation = participantSchema.validate(req.body);
+  if (validation.error) {
+    return res.sendStatus(422);
+  }
+
+  const { name } = req.body;
 
   try {
-    await db.collection('participants').insertOne(newParticipant);
+    const participant = await db.collection('participants').findOne({ name });
+    if (participant) {
+      return res.sendStatus(409);
+    }
 
-    res.sendStatus(201);
+    const newParticipant = {
+      name,
+      lastStatus: Date.now(),
+    };
+    const newMessage = {
+      from: name,
+      to: 'Todos',
+      text: 'entra na sala...',
+      type: 'status',
+      time: dayjs().format('HH:mm:ss'),
+    };
+
+    await db.collection('participants').insertOne(newParticipant);
+    await db.collection('messages').insertOne(newMessage);
+
+    return res.sendStatus(201);
   } catch (err) {
-    res.send(err);
+    return res.send(err);
   }
 });
 
@@ -41,8 +67,14 @@ app.post('/messages', (req, res) => {
   res.sendStatus(201);
 });
 
-app.get('/messages', (req, res) => {
-  res.send(2);
+app.get('/messages', async (req, res) => {
+  try {
+    const messages = await db.collection('messages').find().toArray();
+
+    res.send(messages);
+  } catch (err) {
+    res.send(err);
+  }
 });
 
 app.listen(5000);
