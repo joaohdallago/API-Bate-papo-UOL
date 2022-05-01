@@ -14,10 +14,8 @@ app.use(cors());
 app.use(express.json());
 
 const mongoClient = new MongoClient(process.env.MONGO_URI);
-let db;
-mongoClient.connect().then(() => {
-  db = mongoClient.db('chat-uol');
-});
+await mongoClient.connect();
+const db = mongoClient.db('chat-uol');
 
 app.post('/participants', async (req, res) => {
   const validation = participantSchema.validate(req.body);
@@ -136,5 +134,28 @@ app.post('/status', async (req, res) => {
     return res.send(err);
   }
 });
+
+const automaticClean = async () => {
+  for (;;) {
+    const minLastStatus = Date.now() - 10000;
+    const afkParticipant = (await db.collection('participants').findOneAndDelete({ lastStatus: { $lt: minLastStatus } })).value;
+
+    if (!afkParticipant) {
+      break;
+    }
+
+    const newMessage = {
+      from: afkParticipant.name,
+      to: 'Todos',
+      text: 'sai da sala...',
+      type: 'status',
+      time: dayjs().format('HH:mm:ss'),
+    };
+
+    await db.collection('messages').insertOne(newMessage);
+  }
+};
+
+setInterval(automaticClean, 15000);
 
 app.listen(5000);
