@@ -91,12 +91,31 @@ app.post('/messages', async (req, res) => {
 });
 
 app.get('/messages', async (req, res) => {
+  const { user } = req.headers;
+
+  const limit = Number(req.query.limit);
+
   try {
     const messages = await db.collection('messages').find().toArray();
 
-    res.send(messages);
+    const allowedMessages = messages.filter((message) => {
+      const { type, from, to } = message;
+      if (type === 'private_message' && ![from, to].includes(user)) {
+        return false;
+      }
+      return true;
+    });
+
+    if (limit) {
+      const minIndex = allowedMessages.length - limit;
+      const limitedMessages = allowedMessages.filter((message, index) => index >= minIndex);
+
+      return res.send(limitedMessages);
+    }
+
+    return res.send(allowedMessages);
   } catch (err) {
-    res.send(err);
+    return res.send(err);
   }
 });
 
